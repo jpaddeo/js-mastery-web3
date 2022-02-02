@@ -1,0 +1,13 @@
+// https://eth-ropsten.alchemyapi.io/v2/X1Xdn1lcZI_BQXZ1o3l-zfp8eySpxEVA
+
+require('@nomiclabs/hardhat-waffle');
+
+module.exports = {
+  solidity: '0.8.0',
+  networks: {
+    ropsten: {
+      url: '',
+      accounts: [''],
+    },
+  },
+};
