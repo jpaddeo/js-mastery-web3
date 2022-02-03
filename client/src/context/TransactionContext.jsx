@@ -2,7 +2,7 @@ import { createContext, useEffect, useState } from 'react';
 
 import { ethers } from 'ethers';
 
-import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../../utils/constants';
+import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../utils/constants';
 
 export const TransactionContext = createContext();
 
@@ -29,9 +29,35 @@ export const TransactionContextProvider = ({ children }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [transactionCount, setTransactionCount] = useState(0);
+  const [transactions, setTransactions] = useState([]);
 
   const handleChange = (e, name) => {
     setFormData((prevState) => ({ ...prevState, [name]: e.target.value }));
+  };
+
+  const getAllTransactions = async () => {
+    try {
+      if (!ethereum) return alert('Please install metamask');
+      const transactionContract = getEthereumContract();
+      const availableTransactions =
+        await transactionContract.getAllTransactions();
+      const structuredTransactions = availableTransactions.map(
+        (transaction) => ({
+          addressTo: transaction.sender,
+          addresFrom: transaction.receiver,
+          timestamp: new Date(
+            transaction.timestamp.toNumber() * 1000
+          ).toLocaleString(),
+          amount: parseInt(transaction.amount._hex) / 10 ** 18,
+          message: transaction.message,
+          keyword: transaction.keyword,
+        })
+      );
+      setTransactions(structuredTransactions);
+    } catch (error) {
+      console.log(error);
+      throw new Error('No ethereum object');
+    }
   };
 
   const checkIfWalletIsConnected = async () => {
@@ -40,10 +66,22 @@ export const TransactionContextProvider = ({ children }) => {
       const accounts = await ethereum.request({ method: 'eth_accounts' });
       if (accounts.length) {
         setCurrentAccount(accounts[0]);
-        // getAllTransactions();
+        getAllTransactions();
       } else {
         console.log('No accounts found');
       }
+    } catch (error) {
+      console.log(error);
+      throw new Error('No ethereum object');
+    }
+  };
+
+  const checkIfTransactionExists = async () => {
+    try {
+      if (!ethereum) return alert('Please install metamask');
+      const transactionContract = getEthereumContract();
+      const transactionCount = await transactionContract.getTransactionCount();
+      localStorage.setItem('transactionCount', transactionCount);
     } catch (error) {
       console.log(error);
       throw new Error('No ethereum object');
@@ -95,6 +133,7 @@ export const TransactionContextProvider = ({ children }) => {
       console.log(`Success transaction ${transactionHash}`);
       const transactionCount = await transactionContract.getTransactionCount();
       setTransactionCount(transactionCount.toNumber());
+      window.reload();
     } catch (error) {
       console.log(error);
       throw new Error('No ethereum object');
@@ -103,6 +142,7 @@ export const TransactionContextProvider = ({ children }) => {
 
   useEffect(() => {
     checkIfWalletIsConnected();
+    checkIfTransactionExists();
   }, []);
 
   return (
@@ -110,6 +150,8 @@ export const TransactionContextProvider = ({ children }) => {
       value={{
         currentAccount,
         formData,
+        transactions,
+        isLoading,
         connectWallet,
         setFormData,
         handleChange,
